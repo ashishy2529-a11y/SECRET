@@ -240,9 +240,13 @@ with check (
 
 create policy "responses own update" on public.responses
 for update to authenticated
-using (user_id = (select auth.uid()))
+using (
+  user_id = (select auth.uid())
+  and public.is_room_participant(room_code, participant_id)
+)
 with check (
   user_id = (select auth.uid())
+  and public.is_room_participant(room_code, participant_id)
   and public.is_valid_room_response(room_code, question_id, answer, phase)
 );
 
