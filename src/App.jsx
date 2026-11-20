@@ -313,12 +313,18 @@ export default function App() {
   }
 
   async function startAgain() {
+    if (roomData?.room?.status !== "revealed") {
+      setError("Reveal the results before opening the reflection round.");
+      return;
+    }
+
     setBusy(true);
 
     try {
-      await updateRoom(roomCode, { status: "voting" });
+      // Keep the room revealed so participants who have not started reflecting
+      // do not lose access to the results screen when the host opens round two.
       await refresh();
-      setNotice("The room is open for the next round.");
+      setNotice("The reflection round is open. Participants can review their answers.");
     } catch (e) {
       setError(e.message);
     } finally {
@@ -615,7 +621,7 @@ export default function App() {
               </button>
               <button
                 className="button secondary"
-                disabled={busy}
+                disabled={busy || roomData.room.status !== "revealed"}
                 onClick={startAgain}
               >
                 <RefreshCw size={16} /> Open response round
