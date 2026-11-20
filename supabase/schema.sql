@@ -100,7 +100,7 @@ as $$
       and (
         (p_phase = 'initial' and r.status in ('waiting', 'voting'))
         or
-        (p_phase = 'after_reveal' and r.status in ('revealed', 'voting'))
+        (p_phase = 'after_reveal' and r.status = 'revealed')
       )
   );
 $$;
