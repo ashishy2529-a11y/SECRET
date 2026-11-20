@@ -51,6 +51,7 @@ Do not rerun the fresh-install schema over an existing database. Apply the migra
 1. `supabase/migrations/20261120_secure_anonymous_access.sql`
 2. `supabase/migrations/20261120_enforce_response_phase.sql`
 3. `supabase/migrations/20261120_bind_participant_identity.sql`
+4. `supabase/migrations/20261120_require_reveal_before_reflection.sql`
 
 The migrations are intended to be applied once, in order. Back up important data before making database changes.
 
