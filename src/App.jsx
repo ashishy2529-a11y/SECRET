@@ -677,3 +677,226 @@ export default function App() {
             </div>
 
             {questions.map(
+          
+(q, i) => {
+  const s = getQuestionStats(q, responses);
+
+  return (
+    <div className="result-row" key={q.id}>
+      <div className="result-question">
+        <span>Q{i + 1}</span>{q.prompt}
+      </div>
+      <div className="result-options">
+        {q.options.map(opt => (
+          <div className="result-option" key={opt}>
+            <div className="bar-label">
+              <span>{opt}</span>
+              <b>{s.counts[opt] || 0}</b>
+            </div>
+            <div className="bar-track">
+              <div
+                className="bar-fill"
+                style={{
+                  width: `${
+                    s.total
+                      ? (s.counts[opt] || 0) / s.total * 100
+                      : 0
+                  }%`
+                }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+})}
+          </section>
+        </main>
+      )}
+
+      {view === "participant" && roomData && (
+        <main className="participant-wrap">
+          <div className="workspace-head">
+            <button className="back-link" onClick={goHome}>
+              <ArrowLeft size={16} /> Home
+            </button>
+            <span className="status-pill">ROOM {roomCode}</span>
+          </div>
+
+          <section className="panel participant-panel">
+            <div className="eyebrow">YOUR PRIVATE RESPONSE</div>
+
+            {roomData.room.status === "revealed" &&
+            phase === "initial" ? (
+              <>
+                <div className="revealed-icon"><Eye size={22} /></div>
+                <h1>The room has spoken.</h1>
+                <p className="hero-copy">
+                  The host has revealed the group's answers. Take a look at
+                  the results, then consider whether you'd like to change
+                  your answer.
+                </p>
+
+                {questions.map((q, i) => {
+                  const s = getQuestionStats(q, responses);
+                  return (
+                    <div className="mini-result" key={q.id}>
+                      <b>Q{i + 1}. {q.prompt}</b>
+                      <span>
+                        {s.total} responses ·{" "}
+                        {Object.entries(s.counts)
+                          .sort((a, b) => b[1] - a[1])[0]?.[0] ||
+                          "No votes"} leads
+                      </span>
+                    </div>
+                  );
+                })}
+
+                <button
+                  className="button primary full"
+                  onClick={beginReflection}
+                >
+                  Review my answers <ArrowRight size={17} />
+                </button>
+              </>
+            ) : phaseSubmitted ? (
+              <>
+                <div className="revealed-icon"><Check size={22} /></div>
+                <h1>You're all set.</h1>
+                <p className="hero-copy">
+                  {phase === "initial"
+                    ? "Your personal answers have been submitted. Wait for the host to reveal the group's results."
+                    : "Your reflection answers have been submitted. Thank you for taking part."}
+                </p>
+                <div className="mini-result">
+                  <b>{questions.length} of {questions.length} answers submitted</b>
+                  <span>Your responses have been recorded for this round.</span>
+                </div>
+              </>
+            ) : questionIndex < questions.length ? (
+              <>
+                <div className="question-progress">
+                  <span>QUESTION {questionIndex + 1} / {questions.length}</span>
+                  <span>
+                    {phase === "initial"
+                      ? "ROUND 1 · PRIVATE"
+                      : "ROUND 2 · REFLECTION"}
+                  </span>
+                </div>
+
+                <h1>{question?.prompt || "Waiting for questions..."}</h1>
+                <p className="hero-copy">
+                  {phase === "initial"
+                    ? "Choose the answer that feels right to you. Your choice stays private until the reveal."
+                    : "You've seen the group's results. Would you like to keep or change your answer?"}
+                </p>
+
+                <div className="answer-list">
+                  {(question?.options || []).map(opt => (
+                    <button
+                      key={opt}
+                      className={`answer-option ${
+                        draftAnswers[question.id] === opt ? "selected" : ""
+                      }`}
+                      disabled={busy}
+                      onClick={() => chooseAnswer(opt)}
+                    >
+                      <span className="radio">
+                        {draftAnswers[question.id] === opt &&
+                          <Check size={14} />}
+                      </span>
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="question-nav">
+                  <button
+                    className="text-button"
+                    disabled={questionIndex === 0 || busy}
+                    onClick={() => setQuestionIndex(i => i - 1)}
+                  >
+                    <ArrowLeft size={15} /> Previous
+                  </button>
+                  <span className="small-muted">
+                    {answeredCount} / {questions.length} answered
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="question-progress">
+                  <span>FINAL REVIEW</span>
+                  <span>
+                    {phase === "initial"
+                      ? "ROUND 1 · PRIVATE"
+                      : "ROUND 2 · REFLECTION"}
+                  </span>
+                </div>
+
+                <h1>Review your answers.</h1>
+                <p className="hero-copy">
+                  Check your choices below. You can edit any answer before
+                  submitting your complete response.
+                </p>
+
+                {questions.map((q, i) => (
+                  <div className="mini-result review-answer" key={q.id}>
+                    <div>
+                      <b>Q{i + 1}. {q.prompt}</b>
+                      <span>
+                        {draftAnswers[q.id] || "Not answered yet"}
+                      </span>
+                    </div>
+                    <button
+                      className="text-button"
+                      onClick={() => setQuestionIndex(i)}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                ))}
+
+                <div className="small-muted review-count">
+                  {answeredCount} of {questions.length} answers completed
+                </div>
+
+                <button
+                  className="button primary full submit-button"
+                  disabled={
+                    busy ||
+                    answeredCount !== questions.length ||
+                    questions.length === 0
+                  }
+                  onClick={submitAllAnswers}
+                >
+                  {busy
+                    ? "Submitting your answers..."
+                    : "Submit Your Personal Answers"}
+                  {!busy && <ArrowRight size={17} />}
+                </button>
+
+                <button
+                  className="text-button review-back"
+                  disabled={busy}
+                  onClick={() =>
+                    setQuestionIndex(Math.max(0, questions.length - 1))
+                  }
+                >
+                  <ArrowLeft size={15} /> Back to answers
+                </button>
+              </>
+            )}
+          </section>
+        </main>
+      )}
+
+      <footer className="footer">
+        <span>SECRET<span className="dot">.</span></span>
+        <span>Private thoughts. Collective discovery.</span>
+        <span>{isCloudEnabled ? "Cloud-connected" : "Local demo mode"}</span>
+      </footer>
+    </div>
+  );
+                                                    }
