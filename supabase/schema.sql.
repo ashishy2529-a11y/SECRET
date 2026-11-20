@@ -73,19 +73,26 @@ as $$
 $$;
 
 create or replace function public.is_valid_room_response(
-  p_room_code text, p_question_id text, p_answer text
+  p_room_code text, p_question_id text, p_answer text, p_phase text
 )
 returns boolean
 language sql stable security definer
 set search_path = ''
-as $$
+as $
   select exists (
-    select 1 from public.questions q
+    select 1
+    from public.questions q
+    join public.rooms r on r.code = q.room_code
     where q.id = p_question_id
       and q.room_code = p_room_code
       and p_answer = any(q.options)
+      and (
+        (p_phase = 'initial' and r.status in ('waiting', 'voting'))
+        or
+        (p_phase = 'after_reveal' and r.status in ('revealed', 'voting'))
+      )
   );
-$$;
+$;
 
 create or replace function public.get_room_bundle(p_code text)
 returns jsonb
@@ -114,11 +121,11 @@ $$;
 
 revoke all on function public.is_room_host(text) from public, anon;
 revoke all on function public.is_room_revealed(text) from public, anon;
-revoke all on function public.is_valid_room_response(text,text,text) from public, anon;
+revoke all on function public.is_valid_room_response(text,text,text,text) from public, anon;
 revoke all on function public.get_room_bundle(text) from public, anon;
 grant execute on function public.is_room_host(text) to authenticated;
 grant execute on function public.is_room_revealed(text) to authenticated;
-grant execute on function public.is_valid_room_response(text,text,text) to authenticated;
+grant execute on function public.is_valid_room_response(text,text,text,text) to authenticated;
 grant execute on function public.get_room_bundle(text) to authenticated;
 
 -- Room metadata and questions are not enumerable through table SELECT.
@@ -168,7 +175,7 @@ create policy "responses own create" on public.responses
 for insert to authenticated
 with check (
   user_id = (select auth.uid())
-  and public.is_valid_room_response(room_code, question_id, answer)
+  and public.is_valid_room_response(room_code, question_id, answer, phase)
 );
 
 create policy "responses own update" on public.responses
@@ -176,7 +183,7 @@ for update to authenticated
 using (user_id = (select auth.uid()))
 with check (
   user_id = (select auth.uid())
-  and public.is_valid_room_response(room_code, question_id, answer)
+  and public.is_valid_room_response(room_code, question_id, answer, phase)
 );
 
 create policy "responses own or host delete" on public.responses
