@@ -6,7 +6,7 @@ import {
   Eye, LockKeyhole, Plus, Radio, RefreshCw, Sparkles, Users, Zap
 } from "lucide-react";
 import {
-  buildClusters, findOppositeSimilarities, getHiddenConnections, getQuestionStats, predictNext
+  buildClusters, findOppositeSimilarities, getHiddenConnections, getOpinionShifts, getQuestionStats, predictNext
 } from "./lib/engine";
 import {
   createRoom, getRoom, isCloudEnabled, newParticipantId,
@@ -364,6 +364,11 @@ export default function App() {
     [participants.length, questions.length, responses.length]
   );
 
+  const opinionShifts = useMemo(
+    () => getOpinionShifts(participants, questions, responses),
+    [participants.length, questions.length, responses.length]
+  );
+
   const prediction = useMemo(
     () => predictNext(questions, responses, participants),
     [questions.length, responses.length, participants.length]
@@ -689,6 +694,48 @@ export default function App() {
               )}
               <p className="connection-footnote">
                 This is a simple answer-overlap score, not a personality assessment.
+              </p>
+            </div>
+
+            <div className="shift-panel">
+              <div className="connections-heading">
+                <div>
+                  <div className="eyebrow">OPINION SHIFT ANALYSIS</div>
+                  <h3>What changed after the reveal?</h3>
+                  <p>Compares each participant's first-round answers with their submitted reflection answers.</p>
+                </div>
+                <span className="connection-count">
+                  {postResponses.length ? `${postCount} changes` : "Awaiting round 2"}
+                </span>
+              </div>
+              {opinionShifts.length ? (
+                <div className="shift-list">
+                  {opinionShifts.map(person => (
+                    <article className="shift-card" key={person.label}>
+                      <div className="shift-person">
+                        <b>{person.label}</b>
+                        <span>{person.changed} changed · {person.unchanged} stayed the same</span>
+                      </div>
+                      <div className="shift-details">
+                        {person.changes.length ? person.changes.map((change, index) => (
+                          <div className="shift-change" key={index}>
+                            <span>{change.question}</span>
+                            <div><b>{change.before}</b><span className="shift-arrow">→</span><b>{change.after}</b></div>
+                          </div>
+                        )) : (
+                          <p className="empty">No answer changes in the submitted reflection.</p>
+                        )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty connection-empty">
+                  Opinion shifts will appear after participants submit their second-round answers.
+                </p>
+              )}
+              <p className="connection-footnote">
+                Only submitted answers are compared. A change does not prove that the group caused it.
               </p>
             </div>
 
