@@ -119,3 +119,51 @@ test("reflection eligibility requires every initial answer from the same partici
   assert.equal(hasCompletedPhase(responses, "p2", questions), false);
   assert.equal(hasCompletedPhase(responses, "p1", [], "initial"), false);
 });
+
+
+test("question statistics separate initial and reflection phases", () => {
+  const responses = [
+    row("p1", "q1", "A", "initial"),
+    row("p1", "q1", "B", "after_reveal"),
+    row("p2", "q1", "B", "after_reveal")
+  ];
+  assert.deepEqual(getQuestionStats(questions[0], responses, "initial").counts, { A: 1, B: 0 });
+  assert.deepEqual(getQuestionStats(questions[0], responses, "after_reveal").counts, { A: 0, B: 2 });
+});
+
+test("question statistics ignore answers that are not valid options", () => {
+  const responses = [
+    row("p1", "q1", "A"),
+    row("p2", "q1", "unexpected")
+  ];
+  const stats = getQuestionStats(questions[0], responses);
+  assert.equal(stats.total, 1);
+  assert.equal(stats.counts.A, 1);
+  assert.equal(stats.counts.B, 0);
+});
+
+test("opinion shift analysis excludes incomplete second-round responses", () => {
+  const responses = [
+    row("p1", "q1", "A"),
+    row("p1", "q2", "B"),
+    row("p1", "q1", "B", "after_reveal")
+  ];
+  const shifts = getOpinionShifts(["p1"], questions, responses);
+  assert.equal(shifts.length, 1);
+  assert.equal(shifts[0].compared, 1);
+  assert.equal(shifts[0].changed, 1);
+});
+
+test("hidden connections ignore unanswered questions instead of treating them as agreement", () => {
+  const responses = [
+    row("p1", "q1", "A"), row("p1", "q2", "A"), row("p1", "q3", "A"),
+    row("p2", "q1", "A"), row("p2", "q2", "A")
+  ];
+  assert.deepEqual(getHiddenConnections(["p1", "p2"], questions, responses), []);
+});
+
+test("reflection eligibility is false when participant identity or question list is missing", () => {
+  assert.equal(hasCompletedPhase([], "", questions), false);
+  assert.equal(hasCompletedPhase([], "p1", null), false);
+  assert.equal(hasCompletedPhase([], "p1", []), false);
+});
