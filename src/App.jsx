@@ -79,13 +79,14 @@ export default function App() {
   const responses = roomData?.responses || [];
   const question = questions[questionIndex];
 
-  const participants = [
-    ...new Set(
+  const participants = useMemo(
+    () => [...new Set(
       responses
         .filter(r => r.phase === "initial")
         .map(r => r.participant_id)
-    )
-  ];
+    )].sort(),
+    [responses]
+  );
 
   // Check whether this participant has submitted every answer in this round.
   const phaseSubmitted = questions.length > 0 && questions.every(q =>
@@ -351,7 +352,7 @@ export default function App() {
 
   const clusters = useMemo(
     () => buildClusters(participants, questions, responses),
-    [participants.length, questions.length, responses.length]
+    [participants, questions, responses]
   );
 
   const opposite = useMemo(
@@ -741,34 +742,13 @@ export default function App() {
 
             <div className="prediction-card">
               <div>
-                <div className="eyebrow">NEXT-ANSWER ESTIMATE</div>
-                <h3>Exploratory prediction</h3>
-                <p>
-                  {prediction.confidence}. Based on simple historical response
-                  patterns, not a validated psychological model.
+                <div className="eyebrow">RESPONSIBLE FORECASTING</div>
+                <h3>Why no prediction is shown yet</h3>
+                <p>{prediction.reason}</p>
+                <p className="connection-footnote">
+                  SECRET will only show a forecast when it has enough comparable historical data to support one.
                 </p>
               </div>
-
-              {prediction.options.length ? (
-                <div className="prediction-bars">
-                  {prediction.options.slice(0, 3).map(x => (
-                    <div key={x.answer}>
-                      <div className="bar-label">
-                        <span>{x.answer}</span>
-                        <b>{x.probability}%</b>
-                      </div>
-                      <div className="bar-track">
-                        <div
-                          className="bar-fill"
-                          style={{ width: `${x.probability}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty">More completed questions are needed.</p>
-              )}
             </div>
           </section>
 
