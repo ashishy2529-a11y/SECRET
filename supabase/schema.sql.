@@ -31,9 +31,20 @@ create table if not exists public.responses (
   unique(room_code, question_id, participant_id, phase)
 );
 
+create table if not exists public.room_participants (
+  room_code text not null references public.rooms(code) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  participant_id text not null,
+  created_at timestamptz not null default now(),
+  primary key (room_code, user_id),
+  unique (room_code, participant_id)
+);
+
 alter table public.rooms enable row level security;
 alter table public.questions enable row level security;
 alter table public.responses enable row level security;
+alter table public.room_participants enable row level security;
+revoke all on public.room_participants from public, anon, authenticated;
 
 do $$
 declare p record;
@@ -94,6 +105,50 @@ as $$
   );
 $$;
 
+create or replace function public.get_room_participant_id(p_room_code text)
+returns text
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $
+declare
+  v_user_id uuid := (select auth.uid());
+  v_participant_id text;
+begin
+  if v_user_id is null then
+    raise exception 'An anonymous session is required.';
+  end if;
+
+  insert into public.room_participants (room_code, user_id, participant_id)
+  select p_room_code, v_user_id, pg_catalog.gen_random_uuid()::text
+  where exists (select 1 from public.rooms r where r.code = p_room_code)
+  on conflict (room_code, user_id) do nothing;
+
+  select rp.participant_id into v_participant_id
+  from public.room_participants rp
+  where rp.room_code = p_room_code and rp.user_id = v_user_id;
+
+  if v_participant_id is null then
+    raise exception 'Room not found or participant identity could not be created.';
+  end if;
+  return v_participant_id;
+end;
+$;
+
+create or replace function public.is_room_participant(p_room_code text, p_participant_id text)
+returns boolean
+language sql stable security definer
+set search_path = ''
+as $
+  select exists (
+    select 1 from public.room_participants rp
+    where rp.room_code = p_room_code
+      and rp.participant_id = p_participant_id
+      and rp.user_id = (select auth.uid())
+  );
+$;
+
 create or replace function public.get_room_bundle(p_code text)
 returns jsonb
 language sql stable security definer
@@ -123,10 +178,14 @@ revoke all on function public.is_room_host(text) from public, anon;
 revoke all on function public.is_room_revealed(text) from public, anon;
 revoke all on function public.is_valid_room_response(text,text,text,text) from public, anon;
 revoke all on function public.get_room_bundle(text) from public, anon;
+revoke all on function public.get_room_participant_id(text) from public, anon;
+revoke all on function public.is_room_participant(text,text) from public, anon;
 grant execute on function public.is_room_host(text) to authenticated;
 grant execute on function public.is_room_revealed(text) to authenticated;
 grant execute on function public.is_valid_room_response(text,text,text,text) to authenticated;
 grant execute on function public.get_room_bundle(text) to authenticated;
+grant execute on function public.get_room_participant_id(text) to authenticated;
+grant execute on function public.is_room_participant(text,text) to authenticated;
 
 -- Room metadata and questions are not enumerable through table SELECT.
 create policy "rooms host read" on public.rooms
@@ -175,6 +234,7 @@ create policy "responses own create" on public.responses
 for insert to authenticated
 with check (
   user_id = (select auth.uid())
+  and public.is_room_participant(room_code, participant_id)
   and public.is_valid_room_response(room_code, question_id, answer, phase)
 );
 
