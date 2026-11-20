@@ -37,6 +37,17 @@ export async function createRoom(title = "Untitled experiment") {
   return roomCode;
 }
 
+export async function getRoomParticipantId(roomCode) {
+  if (!isCloudEnabled) return null;
+  await ensureAnonymousSession();
+  const { data, error } = await supabase.rpc("get_room_participant_id", {
+    p_room_code: roomCode
+  });
+  if (error) throw error;
+  if (!data) throw new Error("Could not establish your anonymous participant identity.");
+  return data;
+}
+
 export async function getRoom(roomCode) {
   if (isCloudEnabled) {
     await ensureAnonymousSession();
