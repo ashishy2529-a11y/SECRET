@@ -705,7 +705,7 @@ export default function App() {
                 </div>
               ) : (
                 <p className="empty connection-empty">
-                  At least two participants need to answer two or more questions before connections can be calculated.
+                  At least two participants need at least three questions in common before connections can be calculated.
                 </p>
               )}
               <p className="connection-footnote">
