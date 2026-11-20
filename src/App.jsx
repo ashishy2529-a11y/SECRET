@@ -6,7 +6,7 @@ import {
   Eye, LockKeyhole, Plus, Radio, RefreshCw, Sparkles, Users, Zap
 } from "lucide-react";
 import {
-  buildClusters, findOppositeSimilarities, getHiddenConnections, getOpinionShifts, getQuestionStats, predictNext
+  buildClusters, findOppositeSimilarities, getHiddenConnections, getOpinionShifts, getQuestionStats, hasCompletedPhase, predictNext
 } from "./lib/engine";
 import {
   createRoom, getCurrentUserId, getRoom, getRoomParticipantId, isCloudEnabled, newParticipantId,
@@ -91,21 +91,8 @@ export default function App() {
   );
 
   // Check whether this participant has submitted every answer in this round.
-  const phaseSubmitted = questions.length > 0 && questions.every(q =>
-    responses.some(r =>
-      r.question_id === q.id &&
-      r.participant_id === participantId &&
-      r.phase === phase
-    )
-  );
-
-  const initialSubmitted = questions.length > 0 && questions.every(q =>
-    responses.some(r =>
-      r.question_id === q.id &&
-      r.participant_id === participantId &&
-      r.phase === "initial"
-    )
-  );
+  const phaseSubmitted = hasCompletedPhase(responses, participantId, questions, phase);
+  const initialSubmitted = hasCompletedPhase(responses, participantId, questions, "initial");
 
   const answeredCount = questions.filter(q => draftAnswers[q.id]).length;
 
