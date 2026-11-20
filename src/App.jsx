@@ -9,7 +9,7 @@ import {
   buildClusters, findOppositeSimilarities, getHiddenConnections, getOpinionShifts, getQuestionStats, predictNext
 } from "./lib/engine";
 import {
-  createRoom, getRoom, isCloudEnabled, newParticipantId,
+  createRoom, getCurrentUserId, getRoom, isCloudEnabled, newParticipantId,
   submitResponse, subscribeRoom, updateRoom
 } from "./lib/store";
 
@@ -55,6 +55,7 @@ export default function App() {
   const [joinCode, setJoinCode] = useState("");
   const [roomData, setRoomData] = useState(null);
   const [participantId, setParticipantId] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
   const [draftAnswers, setDraftAnswers] = useState({});
   const [questionIndex, setQuestionIndex] = useState(0);
   const [phase, setPhase] = useState("initial");
@@ -72,8 +73,9 @@ export default function App() {
     return url.toString();
   }, [roomCode]);
 
-  const isHost = roomCode &&
-    localStorage.getItem("secret-host-" + roomCode) === "yes";
+  const isHost = Boolean(roomCode && (isCloudEnabled
+    ? roomData?.room?.host_user_id && roomData.room.host_user_id === currentUserId
+    : localStorage.getItem("secret-host-" + roomCode) === "yes"));
 
   const questions = roomData?.questions || [];
   const responses = roomData?.responses || [];
@@ -129,10 +131,12 @@ export default function App() {
         if (cancelled) return;
 
         const pid = getPid(inviteCode);
+        const userId = await getCurrentUserId();
 
         setRoomCode(inviteCode);
         setRoomData(data);
         setParticipantId(pid);
+        setCurrentUserId(userId || "");
         setDraftAnswers(makeDraftAnswers(data, pid, "initial"));
         setView("participant");
         setQuestionIndex(0);
@@ -178,8 +182,10 @@ export default function App() {
 
     try {
       const code = await createRoom();
+      const userId = await getCurrentUserId();
 
       setRoomCode(code);
+      setCurrentUserId(userId || "");
       setParticipantId(getPid(code));
       setDraftAnswers({});
       setView("host");
@@ -203,6 +209,7 @@ export default function App() {
 
     try {
       const data = await getRoom(code);
+      const userId = await getCurrentUserId();
 
       if (!data) {
         throw new Error("Room not found. Check the PIN and try again.");
@@ -213,6 +220,7 @@ export default function App() {
       setRoomCode(code);
       setRoomData(data);
       setParticipantId(pid);
+      setCurrentUserId(userId || "");
       setDraftAnswers(makeDraftAnswers(data, pid, "initial"));
       setView("participant");
       setQuestionIndex(0);
