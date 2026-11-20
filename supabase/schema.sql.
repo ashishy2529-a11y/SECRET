@@ -111,7 +111,7 @@ language plpgsql
 volatile
 security definer
 set search_path = ''
-as $
+as $$
 declare
   v_user_id uuid := (select auth.uid());
   v_participant_id text;
@@ -134,20 +134,20 @@ begin
   end if;
   return v_participant_id;
 end;
-$;
+$$;
 
 create or replace function public.is_room_participant(p_room_code text, p_participant_id text)
 returns boolean
 language sql stable security definer
 set search_path = ''
-as $
+as $$
   select exists (
     select 1 from public.room_participants rp
     where rp.room_code = p_room_code
       and rp.participant_id = p_participant_id
       and rp.user_id = (select auth.uid())
   );
-$;
+$$;
 
 create or replace function public.get_room_bundle(p_code text)
 returns jsonb
