@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, ArrowRight, BarChart3, Check, Copy, DoorOpen, Eye, EyeOff, LockKeyhole, Plus, Radio, RefreshCw, Sparkles, Users, Zap } from "lucide-react";
 import { buildClusters, findOppositeSimilarities, getQuestionStats, predictNext } from "./lib/engine";
 import { createRoom, getRoom, isCloudEnabled, newParticipantId, submitResponse, subscribeRoom, updateRoom } from "./lib/store";
@@ -23,6 +24,15 @@ export default function App() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const inviteUrl = useMemo(() => {
+    if (!roomCode) return "";
+    const url = new URL(window.location.href);
+    url.search = "";
+    url.searchParams.set("room", roomCode);
+    return url.toString();
+  }, [roomCode]);
 
   const isHost = roomCode && localStorage.getItem("secret-host-" + roomCode) === "yes";
   const questions = roomData?.questions || [];
@@ -35,6 +45,33 @@ export default function App() {
     const data = await getRoom(code);
     if (data) setRoomData(data);
   }
+
+  useEffect(() => {
+    const inviteCode = new URLSearchParams(window.location.search).get("room")?.trim().toUpperCase();
+    if (!inviteCode) return;
+    let cancelled = false;
+    (async () => {
+      setBusy(true);
+      setError("");
+      try {
+        const data = await getRoom(inviteCode);
+        if (!data) throw new Error("This room link is invalid or the room is no longer available.");
+        if (cancelled) return;
+        setRoomCode(inviteCode);
+        setRoomData(data);
+        setParticipantId(getPid(inviteCode));
+        setView("participant");
+        setQuestionIndex(0);
+        setPhase("initial");
+        setSelected("");
+      } catch (e) {
+        if (!cancelled) setError(e.message || "Couldn't open this room link.");
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!roomCode) return;
@@ -91,6 +128,16 @@ export default function App() {
     finally { setBusy(false); }
   }
 
+  async function copyInviteLink() {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1600);
+    } catch {
+      setNotice(`Invite link: ${inviteUrl}`);
+    }
+  }
+
   async function copyCode() {
     try { await navigator.clipboard.writeText(roomCode); setCopied(true); setTimeout(()=>setCopied(false), 1600); }
     catch { setNotice(`Room PIN: ${roomCode}`); }
@@ -114,8 +161,8 @@ export default function App() {
       <div className="top-meta"><span className="live-dot"></span>{isCloudEnabled ? "CLOUD SYNC" : "LOCAL DEMO"}</div>
     </header>
 
-    {error && <div className="toast error">{error}<button onClick={()=>setError("")}>×</button></div>}
-    {notice && <div className="toast success">{notice}<button onClick={()=>setNotice("")}>×</button></div>}
+    {error && <div className="toast error">{error}<button onClick={()=>setError("")}>脳</button></div>}
+    {notice && <div className="toast success">{notice}<button onClick={()=>setNotice("")}>脳</button></div>}
 
     {view === "home" && <main className="hero">
       <div className="eyebrow"><Sparkles size={14}/> A HUMAN DECISION EXPERIMENT</div>
@@ -141,7 +188,11 @@ export default function App() {
 
     {view === "host" && roomData && <main className="workspace">
       <div className="workspace-head"><button className="back-link" onClick={goHome}><ArrowLeft size={16}/> Home</button><span className="status-pill"><span className="live-dot"></span> HOST CONTROL</span></div>
-      <div className="room-title"><div><div className="eyebrow">YOUR EXPERIMENT</div><h1>Room <span>{roomCode}</span></h1><p>Share this PIN with participants to join.</p></div><button className="icon-button" onClick={copyCode}><Copy size={17}/>{copied ? "Copied" : "Copy PIN"}</button></div>
+      <div className="room-title"><div><div className="eyebrow">YOUR EXPERIMENT</div><h1>Room <span>{roomCode}</span></h1><p>Invite participants by scanning this QR code.</p></div><button className="icon-button" onClick={copyCode}><Copy size={17}/>{copied ? "Copied" : "Copy PIN"}</button></div>
+      <section className="panel invite-panel">
+        <div className="invite-copy"><div className="eyebrow">SCAN TO JOIN</div><h2>Bring everyone into the room.</h2><p>Ask participants to scan this QR code with their phone camera. Their browser will open directly into your room.</p><button className="button secondary" onClick={copyInviteLink}><Copy size={16}/>{linkCopied ? "Link copied" : "Copy invite link"}</button><span className="invite-note">Room PIN {roomCode} remains available as a backup.</span></div>
+        <div className="qr-frame"><QRCodeSVG value={inviteUrl} size={184} level="H" includeMargin /></div>
+      </section>
       <section className="panel host-panel">
         <div className="section-heading"><div><div className="eyebrow">LIVE PARTICIPATION</div><h2>Room overview</h2></div><button className="icon-button" onClick={()=>refresh()}><RefreshCw size={16}/> Refresh</button></div>
         <div className="stat-grid"><div className="stat-card"><Users/><strong>{participants.length}</strong><span>Participants</span></div><div className="stat-card"><BarChart3/><strong>{initialCount}</strong><span>Initial answers</span></div><div className="stat-card"><Radio/><strong>{postCount}</strong><span>Changed answers</span></div></div>
@@ -165,9 +216,9 @@ export default function App() {
       <section className="panel participant-panel">
         <div className="eyebrow">YOUR PRIVATE RESPONSE</div>
         {roomData.room.status === "revealed" && phase === "initial" ? <><div className="revealed-icon"><Eye size={22}/></div><h1>The room has spoken.</h1><p className="hero-copy">The host has revealed the group's answers. Take a look at the results, then consider whether you'd like to change your answer.</p>
-          {questions.map((q,i)=>{const s=getQuestionStats(q,responses);return <div className="mini-result" key={q.id}><b>Q{i+1}. {q.prompt}</b><span>{s.total} responses · {Object.entries(s.counts).sort((a,b)=>b[1]-a[1])[0]?.[0] || "No votes"} leads</span></div>})}
+          {questions.map((q,i)=>{const s=getQuestionStats(q,responses);return <div className="mini-result" key={q.id}><b>Q{i+1}. {q.prompt}</b><span>{s.total} responses 路 {Object.entries(s.counts).sort((a,b)=>b[1]-a[1])[0]?.[0] || "No votes"} leads</span></div>})}
           <button className="button primary full" onClick={()=>{setPhase("after_reveal");setQuestionIndex(0);setNotice("You can now reconsider your answers.");}}>Review my answers <ArrowRight size={17}/></button>
-        </> : <><div className="question-progress"><span>QUESTION {questionIndex+1} / {questions.length}</span><span>{phase==="initial" ? "ROUND 1 · PRIVATE" : "ROUND 2 · REFLECTION"}</span></div>
+        </> : <><div className="question-progress"><span>QUESTION {questionIndex+1} / {questions.length}</span><span>{phase==="initial" ? "ROUND 1 路 PRIVATE" : "ROUND 2 路 REFLECTION"}</span></div>
           <h1>{question?.prompt || "Waiting for questions..."}</h1>
           <p className="hero-copy">{phase==="initial" ? "Choose the answer that feels right to you. Your choice stays private until the reveal." : "You've seen the group's results. Would you like to keep or change your answer?"}</p>
           <div className="answer-list">{(question?.options || []).map(opt=><button key={opt} className={`answer-option ${selected===opt?"selected":""}`} onClick={()=>setSelected(opt)}><span className="radio">{selected===opt && <Check size={14}/>}</span>{opt}</button>)}</div>
@@ -179,4 +230,4 @@ export default function App() {
 
     <footer className="footer"><span>SECRET<span className="dot">.</span></span><span>Private thoughts. Collective discovery.</span><span>{isCloudEnabled ? "Cloud-connected" : "Local demo mode"}</span></footer>
   </div>;
-}
+    }
