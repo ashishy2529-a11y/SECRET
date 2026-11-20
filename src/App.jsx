@@ -431,16 +431,16 @@ export default function App() {
       </header>
 
       {error && (
-        <div className="toast error">
+        <div className="toast error" role="alert">
           {error}
-          <button onClick={() => setError("")}>×</button>
+          <button aria-label="Dismiss error message" onClick={() => setError("")}>×</button>
         </div>
       )}
 
       {notice && (
-        <div className="toast success">
+        <div className="toast success" role="status" aria-live="polite">
           {notice}
-          <button onClick={() => setNotice("")}>×</button>
+          <button aria-label="Dismiss notification" onClick={() => setNotice("")}>×</button>
         </div>
       )}
 
@@ -555,7 +555,7 @@ export default function App() {
             </div>
 
             <div className="qr-frame">
-              <QRCodeSVG value={inviteUrl} size={184} level="H" includeMargin />
+              <QRCodeSVG value={inviteUrl} size={184} level="H" includeMargin title={`Join SECRET room ${roomCode}`} />
             </div>
           </section>
 
