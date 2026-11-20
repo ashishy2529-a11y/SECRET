@@ -357,17 +357,17 @@ export default function App() {
 
   const opposite = useMemo(
     () => findOppositeSimilarities(participants, questions, responses),
-    [participants.length, questions.length, responses.length]
+    [participants, questions, responses]
   );
 
   const hiddenConnections = useMemo(
     () => getHiddenConnections(participants, questions, responses),
-    [participants.length, questions.length, responses.length]
+    [participants, questions, responses]
   );
 
   const opinionShifts = useMemo(
     () => getOpinionShifts(participants, questions, responses),
-    [participants.length, questions.length, responses.length]
+    [participants, questions, responses]
   );
 
   const prediction = useMemo(
