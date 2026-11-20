@@ -482,7 +482,7 @@ export default function App() {
                   aria-label="Room PIN"
                   placeholder="ENTER ROOM PIN"
                   value={joinCode}
-                  maxLength={6}
+                  maxLength={8}
                   onChange={e =>
                     setJoinCode(e.target.value.toUpperCase())
                   }
