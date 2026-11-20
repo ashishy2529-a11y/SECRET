@@ -307,26 +307,6 @@ export default function App() {
     }
   }
 
-  async function startAgain() {
-    if (roomData?.room?.status !== "revealed") {
-      setError("Reveal the results before opening the reflection round.");
-      return;
-    }
-
-    setBusy(true);
-
-    try {
-      // Keep the room revealed so participants who have not started reflecting
-      // do not lose access to the results screen when the host opens round two.
-      await refresh();
-      setNotice("The reflection round is open. Participants can review their answers.");
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function copyInviteLink() {
     try {
       await navigator.clipboard.writeText(inviteUrl);
@@ -614,13 +594,11 @@ export default function App() {
               >
                 <Eye size={17} /> Reveal results
               </button>
-              <button
-                className="button secondary"
-                disabled={busy || roomData.room.status !== "revealed"}
-                onClick={startAgain}
-              >
-                <RefreshCw size={16} /> Open response round
-              </button>
+              {roomData.room.status === "revealed" && (
+                <p className="round-status-note">
+                  Reflection round is available. Participants can review and submit their second-round answers at any time.
+                </p>
+              )}
             </div>
           </section>
 
@@ -825,6 +803,9 @@ export default function App() {
 
           <section className="panel participant-panel">
             <div className="eyebrow">YOUR PRIVATE RESPONSE</div>
+            <p className="privacy-note">
+              SECRET does not ask for your name, email or phone number. Your browser uses an anonymous session to keep your answers linked within this room. The host can view submitted answers; other participants see group results after the host reveals them. Please do not enter sensitive personal information.
+            </p>
 
             {roomData.room.status === "revealed" &&
             phase === "initial" ? (
