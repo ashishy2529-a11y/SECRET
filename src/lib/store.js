@@ -46,7 +46,7 @@ export async function getRoom(roomCode) {
     if (roomError) throw roomError;
     if (!bundle) return null;
     const { data: responses, error: responseError } = await supabase
-      .from("responses").select("*").eq("room_code", roomCode);
+      .from("responses").select("id,room_code,question_id,participant_id,answer,phase,created_at").eq("room_code", roomCode);
     if (responseError) throw responseError;
     return {
       room: bundle.room,
