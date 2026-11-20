@@ -1,0 +1,182 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, BarChart3, Check, Copy, DoorOpen, Eye, EyeOff, LockKeyhole, Plus, Radio, RefreshCw, Sparkles, Users, Zap } from "lucide-react";
+import { buildClusters, findOppositeSimilarities, getQuestionStats, predictNext } from "./lib/engine";
+import { createRoom, getRoom, isCloudEnabled, newParticipantId, submitResponse, subscribeRoom, updateRoom } from "./lib/store";
+
+const getPid = code => {
+  const key = `secret-participant-${code}`;
+  let id = localStorage.getItem(key);
+  if (!id) { id = newParticipantId(); localStorage.setItem(key, id); }
+  return id;
+};
+
+export default function App() {
+  const [view, setView] = useState("home");
+  const [roomCode, setRoomCode] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [roomData, setRoomData] = useState(null);
+  const [participantId, setParticipantId] = useState("");
+  const [selected, setSelected] = useState("");
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [phase, setPhase] = useState("initial");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const isHost = roomCode && localStorage.getItem("secret-host-" + roomCode) === "yes";
+  const questions = roomData?.questions || [];
+  const responses = roomData?.responses || [];
+  const question = questions[questionIndex];
+  const participants = [...new Set(responses.filter(r=>r.phase==="initial").map(r=>r.participant_id))];
+
+  async function refresh(code = roomCode) {
+    if (!code) return;
+    const data = await getRoom(code);
+    if (data) setRoomData(data);
+  }
+
+  useEffect(() => {
+    if (!roomCode) return;
+    refresh(roomCode).catch(e=>setError(e.message));
+    const unsubscribe = subscribeRoom(roomCode, () => refresh(roomCode).catch(()=>{}));
+    const timer = setInterval(() => refresh(roomCode).catch(()=>{}), 5000);
+    return () => { unsubscribe(); clearInterval(timer); };
+  }, [roomCode]);
+
+  async function handleCreate() {
+    setBusy(true); setError("");
+    try {
+      const code = await createRoom();
+      setRoomCode(code); setParticipantId(getPid(code)); setView("host"); setQuestionIndex(0); setPhase("initial");
+      await refresh(code);
+    } catch(e) { setError(e.message || "Couldn't create room."); }
+    finally { setBusy(false); }
+  }
+
+  async function handleJoin(e) {
+    e.preventDefault(); setBusy(true); setError("");
+    const code = joinCode.trim().toUpperCase();
+    try {
+      const data = await getRoom(code);
+      if (!data) throw new Error("Room not found. Check the PIN and try again.");
+      setRoomCode(code); setRoomData(data); setParticipantId(getPid(code)); setView("participant"); setQuestionIndex(0); setPhase("initial"); setSelected("");
+    } catch(e) { setError(e.message || "Couldn't join room."); }
+    finally { setBusy(false); }
+  }
+
+  async function castVote() {
+    if (!selected || !question) return;
+    setBusy(true); setError("");
+    try {
+      await submitResponse(roomCode, question.id, participantId, selected, phase);
+      await refresh();
+      setNotice(phase === "initial" ? "Your private answer has been recorded." : "Your updated answer has been recorded.");
+      setSelected("");
+    } catch(e) { setError(e.message || "Couldn't submit answer."); }
+    finally { setBusy(false); }
+  }
+
+  async function reveal() {
+    setBusy(true);
+    try { await updateRoom(roomCode, { status: "revealed" }); await refresh(); setNotice("Results are now visible to the room."); }
+    catch(e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+
+  async function startAgain() {
+    setBusy(true);
+    try { await updateRoom(roomCode, { status: "voting" }); await refresh(); setNotice("The room is open for the next round."); }
+    catch(e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+
+  async function copyCode() {
+    try { await navigator.clipboard.writeText(roomCode); setCopied(true); setTimeout(()=>setCopied(false), 1600); }
+    catch { setNotice(`Room PIN: ${roomCode}`); }
+  }
+
+  const initialCount = responses.filter(r=>r.phase==="initial").length;
+  const postResponses = responses.filter(r=>r.phase==="after_reveal");
+  const postCount = postResponses.filter(after => {
+    const before = responses.find(r=>r.phase==="initial" && r.question_id===after.question_id && r.participant_id===after.participant_id);
+    return before && before.answer !== after.answer;
+  }).length;
+  const clusters = useMemo(()=>buildClusters(participants, questions, responses), [participants.length, questions.length, responses.length]);
+  const opposite = useMemo(()=>findOppositeSimilarities(participants, questions, responses), [participants.length, questions.length, responses.length]);
+  const prediction = useMemo(()=>predictNext(questions, responses, participants), [questions.length, responses.length, participants.length]);
+
+  function goHome() { setView("home"); setRoomCode(""); setRoomData(null); setError(""); setNotice(""); }
+
+  return <div className="app-shell">
+    <header className="topbar">
+      <button className="brand" onClick={goHome}><span className="brand-mark">S</span><span>SECRET<span className="dot">.</span></span></button>
+      <div className="top-meta"><span className="live-dot"></span>{isCloudEnabled ? "CLOUD SYNC" : "LOCAL DEMO"}</div>
+    </header>
+
+    {error && <div className="toast error">{error}<button onClick={()=>setError("")}>×</button></div>}
+    {notice && <div className="toast success">{notice}<button onClick={()=>setNotice("")}>×</button></div>}
+
+    {view === "home" && <main className="hero">
+      <div className="eyebrow"><Sparkles size={14}/> A HUMAN DECISION EXPERIMENT</div>
+      <h1>Think differently.<br/><span>Discover together.</span></h1>
+      <p className="hero-copy">Private thoughts. Collective discovery. Explore how people decide, where perspectives overlap, and how opinions shift.</p>
+      <div className="home-grid">
+        <section className="panel create-panel">
+          <div className="panel-icon"><Plus/></div><h2>Host an experiment</h2>
+          <p>Create a private room, invite people, and reveal the patterns behind their decisions.</p>
+          <button className="button primary full" disabled={busy} onClick={handleCreate}>{busy ? "Creating..." : "Create a room"}<ArrowRight size={17}/></button>
+        </section>
+        <section className="panel join-panel">
+          <div className="panel-icon muted"><DoorOpen/></div><h2>Join a room</h2>
+          <p>Have a room PIN? Enter it to take part in the experiment.</p>
+          <form onSubmit={handleJoin} className="join-form">
+            <input aria-label="Room PIN" placeholder="ENTER ROOM PIN" value={joinCode} maxLength={6} onChange={e=>setJoinCode(e.target.value.toUpperCase())}/>
+            <button className="button secondary full" disabled={busy || joinCode.trim().length < 4}>{busy ? "Joining..." : "Join room"}<ArrowRight size={17}/></button>
+          </form>
+        </section>
+      </div>
+      <div className="feature-strip"><span><LockKeyhole size={15}/> Anonymous by design</span><span><Users size={15}/> Shared experiences</span><span><Zap size={15}/> Live insights</span></div>
+    </main>}
+
+    {view === "host" && roomData && <main className="workspace">
+      <div className="workspace-head"><button className="back-link" onClick={goHome}><ArrowLeft size={16}/> Home</button><span className="status-pill"><span className="live-dot"></span> HOST CONTROL</span></div>
+      <div className="room-title"><div><div className="eyebrow">YOUR EXPERIMENT</div><h1>Room <span>{roomCode}</span></h1><p>Share this PIN with participants to join.</p></div><button className="icon-button" onClick={copyCode}><Copy size={17}/>{copied ? "Copied" : "Copy PIN"}</button></div>
+      <section className="panel host-panel">
+        <div className="section-heading"><div><div className="eyebrow">LIVE PARTICIPATION</div><h2>Room overview</h2></div><button className="icon-button" onClick={()=>refresh()}><RefreshCw size={16}/> Refresh</button></div>
+        <div className="stat-grid"><div className="stat-card"><Users/><strong>{participants.length}</strong><span>Participants</span></div><div className="stat-card"><BarChart3/><strong>{initialCount}</strong><span>Initial answers</span></div><div className="stat-card"><Radio/><strong>{postCount}</strong><span>Changed answers</span></div></div>
+        <div className="question-admin"><div className="eyebrow">QUESTION {questionIndex+1} OF {questions.length}</div><h3>{question?.prompt || "No question available"}</h3><div className="question-nav"><button className="button secondary" disabled={questionIndex===0} onClick={()=>setQuestionIndex(i=>i-1)}>Previous</button><button className="button secondary" disabled={questionIndex>=questions.length-1} onClick={()=>setQuestionIndex(i=>i+1)}>Next question</button></div></div>
+        <div className="action-row"><button className="button primary" disabled={busy} onClick={reveal}><Eye size={17}/> Reveal results</button><button className="button secondary" disabled={busy} onClick={startAgain}><RefreshCw size={16}/> Open response round</button></div>
+      </section>
+      <section className="panel"><div className="section-heading"><div><div className="eyebrow">ROOM INTELLIGENCE</div><h2>What the answers reveal</h2></div><span className="soft-label">Exploratory insights</span></div>
+        <div className="insight-grid">
+          <div className="insight-card"><h3>Thinking patterns</h3><p>Groups based on similarity across initial answers.</p>{clusters.length ? clusters.map(c=><div className="cluster-row" key={c.name}><span className="cluster-dot"></span><span>{c.name}</span><b>{c.size} people</b></div>) : <p className="empty">Waiting for at least a few responses.</p>}</div>
+          <div className="insight-card"><h3>Unexpected overlap</h3><p>Participants can disagree on individual choices while sharing broader response patterns.</p><strong className="big-number">{opposite.length}</strong><span className="small-muted">potential overlap signals</span></div>
+        </div>
+        <div className="prediction-card"><div><div className="eyebrow">NEXT-ANSWER ESTIMATE</div><h3>Exploratory prediction</h3><p>{prediction.confidence}. Based on simple historical response patterns, not a validated psychological model.</p></div>{prediction.options.length ? <div className="prediction-bars">{prediction.options.slice(0,3).map(x=><div key={x.answer}><div className="bar-label"><span>{x.answer}</span><b>{x.probability}%</b></div><div className="bar-track"><div className="bar-fill" style={{width:`${x.probability}%`}}/></div></div>)}</div> : <p className="empty">More completed questions are needed.</p>}</div>
+      </section>
+      <section className="panel"><div className="section-heading"><div><div className="eyebrow">QUESTION RESULTS</div><h2>Answer distribution</h2></div></div>
+        {questions.map((q,i)=>{const s=getQuestionStats(q,responses);return <div className="result-row" key={q.id}><div className="result-question"><span>Q{i+1}</span>{q.prompt}</div><div className="result-options">{q.options.map(opt=><div className="result-option" key={opt}><div className="bar-label"><span>{opt}</span><b>{s.counts[opt]||0}</b></div><div className="bar-track"><div className="bar-fill" style={{width:`${s.total?(s.counts[opt]||0)/s.total*100:0}%`}}/></div></div>)}</div></div>})}
+      </section>
+    </main>}
+
+    {view === "participant" && roomData && <main className="participant-wrap">
+      <div className="workspace-head"><button className="back-link" onClick={goHome}><ArrowLeft size={16}/> Home</button><span className="status-pill">ROOM {roomCode}</span></div>
+      <section className="panel participant-panel">
+        <div className="eyebrow">YOUR PRIVATE RESPONSE</div>
+        {roomData.room.status === "revealed" && phase === "initial" ? <><div className="revealed-icon"><Eye size={22}/></div><h1>The room has spoken.</h1><p className="hero-copy">The host has revealed the group's answers. Take a look at the results, then consider whether you'd like to change your answer.</p>
+          {questions.map((q,i)=>{const s=getQuestionStats(q,responses);return <div className="mini-result" key={q.id}><b>Q{i+1}. {q.prompt}</b><span>{s.total} responses · {Object.entries(s.counts).sort((a,b)=>b[1]-a[1])[0]?.[0] || "No votes"} leads</span></div>})}
+          <button className="button primary full" onClick={()=>{setPhase("after_reveal");setQuestionIndex(0);setNotice("You can now reconsider your answers.");}}>Review my answers <ArrowRight size={17}/></button>
+        </> : <><div className="question-progress"><span>QUESTION {questionIndex+1} / {questions.length}</span><span>{phase==="initial" ? "ROUND 1 · PRIVATE" : "ROUND 2 · REFLECTION"}</span></div>
+          <h1>{question?.prompt || "Waiting for questions..."}</h1>
+          <p className="hero-copy">{phase==="initial" ? "Choose the answer that feels right to you. Your choice stays private until the reveal." : "You've seen the group's results. Would you like to keep or change your answer?"}</p>
+          <div className="answer-list">{(question?.options || []).map(opt=><button key={opt} className={`answer-option ${selected===opt?"selected":""}`} onClick={()=>setSelected(opt)}><span className="radio">{selected===opt && <Check size={14}/>}</span>{opt}</button>)}</div>
+          <button className="button primary full submit-button" disabled={!selected||busy} onClick={castVote}>{busy ? "Submitting..." : "Submit private answer"}<ArrowRight size={17}/></button>
+          <div className="question-nav"><button className="text-button" disabled={questionIndex===0} onClick={()=>{setQuestionIndex(i=>i-1);setSelected("");}}>Previous</button><button className="text-button" disabled={questionIndex>=questions.length-1} onClick={()=>{setQuestionIndex(i=>i+1);setSelected("");}}>Next</button></div>
+        </>}
+      </section>
+    </main>}
+
+    <footer className="footer"><span>SECRET<span className="dot">.</span></span><span>Private thoughts. Collective discovery.</span><span>{isCloudEnabled ? "Cloud-connected" : "Local demo mode"}</span></footer>
+  </div>;
+}
