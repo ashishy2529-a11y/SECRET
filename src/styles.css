@@ -27,3 +27,17 @@
 .connection-footnote{font-size:10px!important;min-height:0;margin:13px 0 0!important;color:#778398!important}
 .connection-empty{margin:0!important}
 @media(max-width:650px){.connection-list{grid-template-columns:1fr}.connections-heading{flex-direction:column}}
+
+.shift-panel{margin-top:13px;background:#0d1320;border:1px solid #273044;border-radius:14px;padding:18px}
+.shift-list{display:grid;gap:10px}
+.shift-card{background:#121a29;border:1px solid #2b3448;border-radius:12px;padding:14px}
+.shift-person{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}
+.shift-person b{font-size:12px;color:#e7e9f3}
+.shift-person span{font-size:10px;color:#a49bff}
+.shift-details{display:grid;gap:9px}
+.shift-change{display:grid;gap:5px;border-top:1px solid #293044;padding-top:9px}
+.shift-change>span{font-size:10px;line-height:1.45;color:#9aa5b8}
+.shift-change div{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px}
+.shift-change div b{color:#d9d4ff}
+.shift-arrow{color:#58d6a2;font-weight:700}
+@media(max-width:650px){.shift-person{align-items:flex-start;flex-direction:column}}
