@@ -67,8 +67,8 @@ export default function App() {
 
   const inviteUrl = useMemo(() => {
     if (!roomCode) return "";
-    const url = new URL(window.location.href);
-    url.search = "";
+    // Always share the public production URL, never a Vercel preview URL.
+    const url = new URL("https://secret-i7ag.vercel.app/");
     url.searchParams.set("room", roomCode);
     return url.toString();
   }, [roomCode]);
