@@ -138,3 +138,39 @@ export function getHiddenConnections(participants, questions, responses) {
     .sort((a, b) => b.score - a.score || b.matches - a.matches)
     .slice(0, 6);
 }
+
+// Compare each participant's first-round answers with their post-reveal answers.
+export function getOpinionShifts(participants, questions, responses) {
+  const results = [];
+  participants.forEach((participantId, index) => {
+    const changes = [];
+    let compared = 0;
+    questions.forEach(question => {
+      const before = responses.find(r =>
+        r.participant_id === participantId &&
+        r.question_id === question.id &&
+        r.phase === "initial"
+      )?.answer;
+      const after = responses.find(r =>
+        r.participant_id === participantId &&
+        r.question_id === question.id &&
+        r.phase === "after_reveal"
+      )?.answer;
+      if (before == null || after == null) return;
+      compared++;
+      if (before !== after) {
+        changes.push({ question: question.prompt, before, after });
+      }
+    });
+    if (compared > 0) {
+      results.push({
+        label: `Stranger ${String(index + 1).padStart(3, "0")}`,
+        compared,
+        changed: changes.length,
+        unchanged: compared - changes.length,
+        changes
+      });
+    }
+  });
+  return results.sort((a, b) => b.changed - a.changed);
+}
