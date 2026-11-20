@@ -86,3 +86,55 @@ export function getQuestionStats(question, responses, phase = "initial") {
   list.forEach(r => counts[r.answer] = (counts[r.answer] || 0) + 1);
   return { total: list.length, counts, options: question.options || [] };
 }
+
+// Pair-level matches for the host's Hidden Connections panel.
+// Labels are anonymous and only ordinal within this room.
+export function getHiddenConnections(participants, questions, responses) {
+  const people = participants.map((id, index) => ({
+    id,
+    label: `Stranger ${String(index + 1).padStart(3, "0")}`
+  }));
+  const findings = [];
+
+  for (let i = 0; i < people.length; i++) {
+    for (let j = i + 1; j < people.length; j++) {
+      const sharedAnswers = [];
+      let compared = 0;
+      let matches = 0;
+
+      questions.forEach(question => {
+        const a = responses.find(r =>
+          r.participant_id === people[i].id &&
+          r.question_id === question.id &&
+          r.phase === "initial"
+        )?.answer;
+        const b = responses.find(r =>
+          r.participant_id === people[j].id &&
+          r.question_id === question.id &&
+          r.phase === "initial"
+        )?.answer;
+
+        if (a == null || b == null) return;
+        compared++;
+        if (a === b) {
+          matches++;
+          sharedAnswers.push({ question: question.prompt, answer: a });
+        }
+      });
+
+      if (compared < 2) continue;
+      findings.push({
+        first: people[i].label,
+        second: people[j].label,
+        compared,
+        matches,
+        score: Math.round(matches / compared * 100),
+        sharedAnswers
+      });
+    }
+  }
+
+  return findings
+    .sort((a, b) => b.score - a.score || b.matches - a.matches)
+    .slice(0, 6);
+}
