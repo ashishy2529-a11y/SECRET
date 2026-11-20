@@ -41,3 +41,19 @@
 .shift-change div b{color:#d9d4ff}
 .shift-arrow{color:#58d6a2;font-weight:700}
 @media(max-width:650px){.shift-person{align-items:flex-start;flex-direction:column}}
+
+
+/* Keyboard visibility and reduced-motion support. */
+:where(button, input, a, [role="button"]):focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
