@@ -372,7 +372,7 @@ export default function App() {
 
   const prediction = useMemo(
     () => predictNext(questions, responses, participants),
-    [questions.length, responses.length, participants.length]
+    [participants, questions, responses]
   );
 
   function goHome() {
