@@ -3,7 +3,11 @@ import { ensureAnonymousSession, isCloudEnabled, supabase } from "./supabase";
 const KEY = "secret-demo-v1";
 const read = () => JSON.parse(localStorage.getItem(KEY) || '{"rooms":[],"questions":[],"responses":[]}');
 const write = data => localStorage.setItem(KEY, JSON.stringify(data));
-const code = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+const code = () => {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  return Array.from(bytes, value => alphabet[value % alphabet.length]).join("");
+};
 const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
 
 export const demoQuestions = [
@@ -36,14 +40,19 @@ export async function createRoom(title = "Untitled experiment") {
 export async function getRoom(roomCode) {
   if (isCloudEnabled) {
     await ensureAnonymousSession();
-    const { data: room, error } = await supabase.from("rooms").select("*").eq("code", roomCode).maybeSingle();
-    if (error) throw error;
-    if (!room) return null;
-    const { data: questions, error: qError } = await supabase.from("questions").select("*").eq("room_code", roomCode).order("position");
-    if (qError) throw qError;
-    const { data: responses, error: rError } = await supabase.from("responses").select("*").eq("room_code", roomCode);
-    if (rError) throw rError;
-    return { room, questions, responses };
+    const { data: bundle, error: roomError } = await supabase.rpc("get_room_bundle", {
+      p_code: roomCode
+    });
+    if (roomError) throw roomError;
+    if (!bundle) return null;
+    const { data: responses, error: responseError } = await supabase
+      .from("responses").select("*").eq("room_code", roomCode);
+    if (responseError) throw responseError;
+    return {
+      room: bundle.room,
+      questions: bundle.questions || [],
+      responses: responses || []
+    };
   }
   const d = read();
   const room = d.rooms.find(r => r.code === roomCode);
