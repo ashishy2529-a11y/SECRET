@@ -227,3 +227,18 @@ export function getOpinionShifts(participants, questions, responses) {
   });
   return results.sort((a, b) => b.changed - a.changed || a.label.localeCompare(b.label));
 }
+
+
+// A participant may enter the reflection round only after completing every
+// first-round question. Partial or other participants' responses do not count.
+export function hasCompletedPhase(responses, participantId, questions, phase = "initial") {
+  if (!participantId || !Array.isArray(questions) || questions.length === 0) return false;
+  return questions.every(question =>
+    (responses || []).some(response =>
+      response &&
+      response.participant_id === participantId &&
+      response.question_id === question.id &&
+      response.phase === phase
+    )
+  );
+}
