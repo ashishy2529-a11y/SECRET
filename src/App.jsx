@@ -99,6 +99,14 @@ export default function App() {
     )
   );
 
+  const initialSubmitted = questions.length > 0 && questions.every(q =>
+    responses.some(r =>
+      r.question_id === q.id &&
+      r.participant_id === participantId &&
+      r.phase === "initial"
+    )
+  );
+
   const answeredCount = questions.filter(q => draftAnswers[q.id]).length;
 
   async function refresh(code = roomCode) {
@@ -857,12 +865,18 @@ export default function App() {
                   );
                 })}
 
-                <button
-                  className="button primary full"
-                  onClick={beginReflection}
-                >
-                  Review my answers <ArrowRight size={17} />
-                </button>
+                {initialSubmitted ? (
+                  <button
+                    className="button primary full"
+                    onClick={beginReflection}
+                  >
+                    Review my answers <ArrowRight size={17} />
+                  </button>
+                ) : (
+                  <p className="empty">
+                    The first round is closed. You can view the results, but a reflection requires completed first-round answers from this session.
+                  </p>
+                )}
               </>
             ) : phaseSubmitted ? (
               <>
