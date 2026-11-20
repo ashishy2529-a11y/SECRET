@@ -9,7 +9,7 @@ import {
   buildClusters, findOppositeSimilarities, getHiddenConnections, getOpinionShifts, getQuestionStats, predictNext
 } from "./lib/engine";
 import {
-  createRoom, getCurrentUserId, getRoom, isCloudEnabled, newParticipantId,
+  createRoom, getCurrentUserId, getRoom, getRoomParticipantId, isCloudEnabled, newParticipantId,
   submitResponse, subscribeRoom, updateRoom
 } from "./lib/store";
 
@@ -130,7 +130,7 @@ export default function App() {
 
         if (cancelled) return;
 
-        const pid = getPid(inviteCode);
+        const pid = isCloudEnabled ? await getRoomParticipantId(inviteCode) : getPid(inviteCode);
         const userId = await getCurrentUserId();
         const hostAccess = isCloudEnabled
           ? data.room.host_user_id === userId
@@ -189,7 +189,7 @@ export default function App() {
 
       setRoomCode(code);
       setCurrentUserId(userId || "");
-      setParticipantId(getPid(code));
+      setParticipantId(isCloudEnabled ? await getRoomParticipantId(code) : getPid(code));
       setDraftAnswers({});
       setView("host");
       setQuestionIndex(0);
@@ -218,7 +218,7 @@ export default function App() {
         throw new Error("Room not found. Check the PIN and try again.");
       }
 
-      const pid = getPid(code);
+      const pid = isCloudEnabled ? await getRoomParticipantId(code) : getPid(code);
       const hostAccess = isCloudEnabled
         ? data.room.host_user_id === userId
         : localStorage.getItem("secret-host-" + code) === "yes";
