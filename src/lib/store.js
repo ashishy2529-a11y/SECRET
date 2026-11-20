@@ -29,7 +29,11 @@ export async function createRoom(title = "Untitled experiment") {
     const { error: roomError } = await supabase.from("rooms").insert(room);
     if (roomError) throw roomError;
     const { error: qError } = await supabase.from("questions").insert(questions);
-    if (qError) throw qError;
+    if (qError) {
+      // Avoid leaving a host-owned room behind if its question batch fails.
+      await supabase.from("rooms").delete().eq("code", roomCode);
+      throw qError;
+    }
   } else {
     const data = read(); data.rooms.push(room); data.questions.push(...questions); write(data);
   }
