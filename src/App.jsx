@@ -132,13 +132,16 @@ export default function App() {
 
         const pid = getPid(inviteCode);
         const userId = await getCurrentUserId();
+        const hostAccess = isCloudEnabled
+          ? data.room.host_user_id === userId
+          : localStorage.getItem("secret-host-" + inviteCode) === "yes";
 
         setRoomCode(inviteCode);
         setRoomData(data);
         setParticipantId(pid);
         setCurrentUserId(userId || "");
         setDraftAnswers(makeDraftAnswers(data, pid, "initial"));
-        setView("participant");
+        setView(hostAccess ? "host" : "participant");
         setQuestionIndex(0);
         setPhase("initial");
       } catch (e) {
@@ -216,13 +219,16 @@ export default function App() {
       }
 
       const pid = getPid(code);
+      const hostAccess = isCloudEnabled
+        ? data.room.host_user_id === userId
+        : localStorage.getItem("secret-host-" + code) === "yes";
 
       setRoomCode(code);
       setRoomData(data);
       setParticipantId(pid);
       setCurrentUserId(userId || "");
       setDraftAnswers(makeDraftAnswers(data, pid, "initial"));
-      setView("participant");
+      setView(hostAccess ? "host" : "participant");
       setQuestionIndex(0);
       setPhase("initial");
     } catch (e) {
