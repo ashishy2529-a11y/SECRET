@@ -68,7 +68,13 @@ language sql stable security definer
 set search_path = ''
 as $$
   select jsonb_build_object(
-    'room', to_jsonb(r),
+    'room', (
+      to_jsonb(r) - 'host_user_id'
+      || case when r.host_user_id = (select auth.uid())
+        then jsonb_build_object('host_user_id', r.host_user_id)
+        else '{}'::jsonb
+      end
+    ),
     'questions', coalesce(
       jsonb_agg(to_jsonb(q) order by q.position)
         filter (where q.id is not null),
