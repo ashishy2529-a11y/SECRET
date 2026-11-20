@@ -6,7 +6,7 @@ import {
   Eye, LockKeyhole, Plus, Radio, RefreshCw, Sparkles, Users, Zap
 } from "lucide-react";
 import {
-  buildClusters, findOppositeSimilarities, getQuestionStats, predictNext
+  buildClusters, findOppositeSimilarities, getHiddenConnections, getQuestionStats, predictNext
 } from "./lib/engine";
 import {
   createRoom, getRoom, isCloudEnabled, newParticipantId,
@@ -359,6 +359,11 @@ export default function App() {
     [participants.length, questions.length, responses.length]
   );
 
+  const hiddenConnections = useMemo(
+    () => getHiddenConnections(participants, questions, responses),
+    [participants.length, questions.length, responses.length]
+  );
+
   const prediction = useMemo(
     () => predictNext(questions, responses, participants),
     [questions.length, responses.length, participants.length]
@@ -633,6 +638,58 @@ export default function App() {
                 <strong className="big-number">{opposite.length}</strong>
                 <span className="small-muted">potential overlap signals</span>
               </div>
+            </div>
+
+            <div className="connections-panel">
+              <div className="connections-heading">
+                <div>
+                  <div className="eyebrow">HIDDEN CONNECTIONS</div>
+                  <h3>Strangers who think alike</h3>
+                  <p>Anonymous matches based on answers both people submitted in round one.</p>
+                </div>
+                <span className="connection-count">{hiddenConnections.length} matches</span>
+              </div>
+              {hiddenConnections.length ? (
+                <div className="connection-list">
+                  {hiddenConnections.map(match => (
+                    <article className="connection-card" key={match.first + match.second}>
+                      <div className="connection-topline">
+                        <div className="connection-people">
+                          <span>{match.first}</span>
+                          <span className="connection-link">↔</span>
+                          <span>{match.second}</span>
+                        </div>
+                        <strong>{match.score}%</strong>
+                      </div>
+                      <div className="connection-meter">
+                        <span style={{ width: `${match.score}%` }} />
+                      </div>
+                      <div className="connection-subtitle">
+                        Agreed on {match.matches} of {match.compared} compared questions
+                      </div>
+                      {match.sharedAnswers.length ? (
+                        <div className="shared-answers">
+                          {match.sharedAnswers.slice(0, 3).map((item, answerIndex) => (
+                            <div key={answerIndex}>
+                              <span>{item.question}</span>
+                              <b>{item.answer}</b>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="connection-subtitle">No matching answers yet.</div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty connection-empty">
+                  At least two participants need to answer two or more questions before connections can be calculated.
+                </p>
+              )}
+              <p className="connection-footnote">
+                This is a simple answer-overlap score, not a personality assessment.
+              </p>
             </div>
 
             <div className="prediction-card">
