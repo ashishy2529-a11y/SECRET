@@ -1,33 +1,7 @@
--- SECRET secure anonymous MVP schema
--- Enable Supabase Anonymous Sign-Ins before participants use the cloud app.
-
-create table if not exists public.rooms (
-  code text primary key,
-  title text not null default 'Untitled experiment',
-  status text not null default 'waiting' check (status in ('waiting','voting','revealed')),
-  created_at timestamptz not null default now(),
-  host_user_id uuid references auth.users(id) on delete set null
-);
-
-create table if not exists public.questions (
-  id text primary key,
-  room_code text not null references public.rooms(code) on delete cascade,
-  prompt text not null,
-  options text[] not null,
-  position integer not null
-);
-
-create table if not exists public.responses (
-  id text primary key,
-  room_code text not null references public.rooms(code) on delete cascade,
-  question_id text not null references public.questions(id) on delete cascade,
-  participant_id text not null,
-  answer text not null,
-  phase text not null check (phase in ('initial','after_reveal')),
-  created_at timestamptz not null default now(),
-  user_id uuid references auth.users(id) on delete set null,
-  unique(room_code, question_id, participant_id, phase)
-);
+-- Run once in Supabase SQL Editor after enabling Anonymous Sign-Ins.
+-- Legacy rooms created before this migration have no verified host identity.
+-- They remain readable only through the invite bundle RPC; create new rooms
+-- after migration because legacy host controls cannot be safely transferred.
 
 alter table public.rooms add column if not exists host_user_id uuid references auth.users(id) on delete set null;
 alter table public.responses add column if not exists user_id uuid references auth.users(id) on delete set null;
@@ -94,7 +68,13 @@ language sql stable security definer
 set search_path = ''
 as $$
   select jsonb_build_object(
-    'room', to_jsonb(r),
+    'room', (
+      to_jsonb(r) - 'host_user_id'
+      || case when r.host_user_id = (select auth.uid())
+        then jsonb_build_object('host_user_id', r.host_user_id)
+        else '{}'::jsonb
+      end
+    ),
     'questions', coalesce(
       jsonb_agg(to_jsonb(q) order by q.position)
         filter (where q.id is not null),
