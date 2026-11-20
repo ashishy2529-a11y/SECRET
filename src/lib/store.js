@@ -1,4 +1,4 @@
-import { ensureAnonymousSession, isCloudEnabled, supabase } from "./supabase";
+import { ensureAnonymousSession, getCurrentUserId, isCloudEnabled, supabase } from "./supabase";
 
 const KEY = "secret-demo-v1";
 const read = () => JSON.parse(localStorage.getItem(KEY) || '{"rooms":[],"questions":[],"responses":[]}');
@@ -101,4 +101,4 @@ export function newParticipantId() {
   return id;
 }
 
-export { isCloudEnabled };
+export { getCurrentUserId, isCloudEnabled };
