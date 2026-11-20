@@ -115,7 +115,7 @@ test("reflection eligibility requires every initial answer from the same partici
     row("p1", "q4", "B", "after_reveal")
   ];
   assert.equal(hasCompletedPhase(responses, "p1", questions, "initial"), false);
-  assert.equal(hasCompletedPhase([...responses, row("p1", "q3", "A")], "p1", questions), true);
+  assert.equal(hasCompletedPhase([...responses, row("p1", "q3", "A"), row("p1", "q4", "A")], "p1", questions), true);
   assert.equal(hasCompletedPhase(responses, "p2", questions), false);
   assert.equal(hasCompletedPhase(responses, "p1", [], "initial"), false);
 });
