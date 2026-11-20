@@ -1,10 +1,35 @@
--- Run once in Supabase SQL Editor after enabling Anonymous Sign-Ins.
--- Legacy rooms created before this migration have no verified host identity.
--- They remain readable only through the invite bundle RPC; create new rooms
--- after migration because legacy host controls cannot be safely transferred.
+-- SECRET secure anonymous MVP schema
+-- Enable Supabase Authentication > Anonymous Sign-Ins before using the cloud app.
+-- Run this full file only for a NEW Supabase project. Existing projects should
+-- run supabase/migrations/20261120_secure_anonymous_access.sql instead.
 
-alter table public.rooms add column if not exists host_user_id uuid references auth.users(id) on delete set null;
-alter table public.responses add column if not exists user_id uuid references auth.users(id) on delete set null;
+create table if not exists public.rooms (
+  code text primary key,
+  title text not null default 'Untitled experiment',
+  status text not null default 'waiting' check (status in ('waiting','voting','revealed')),
+  created_at timestamptz not null default now(),
+  host_user_id uuid references auth.users(id) on delete set null
+);
+
+create table if not exists public.questions (
+  id text primary key,
+  room_code text not null references public.rooms(code) on delete cascade,
+  prompt text not null,
+  options text[] not null,
+  position integer not null
+);
+
+create table if not exists public.responses (
+  id text primary key,
+  room_code text not null references public.rooms(code) on delete cascade,
+  question_id text not null references public.questions(id) on delete cascade,
+  participant_id text not null,
+  answer text not null,
+  phase text not null check (phase in ('initial','after_reveal')),
+  created_at timestamptz not null default now(),
+  user_id uuid references auth.users(id) on delete set null,
+  unique(room_code, question_id, participant_id, phase)
+);
 
 alter table public.rooms enable row level security;
 alter table public.questions enable row level security;
