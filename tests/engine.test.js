@@ -6,6 +6,7 @@ import {
   getHiddenConnections,
   getOpinionShifts,
   getQuestionStats,
+  hasCompletedPhase,
   predictNext,
   responseMatrix,
   similarity
@@ -103,4 +104,18 @@ test("opposite similarity findings require a meaningful mixed pattern", () => {
   assert.equal(result.length, 1);
   assert.equal(result[0].score, 25);
   assert.equal(result[0].disagreements.length, 3);
+});
+
+
+test("reflection eligibility requires every initial answer from the same participant", () => {
+  const responses = [
+    row("p1", "q1", "A"),
+    row("p1", "q2", "A"),
+    row("p2", "q3", "B"),
+    row("p1", "q4", "B", "after_reveal")
+  ];
+  assert.equal(hasCompletedPhase(responses, "p1", questions, "initial"), false);
+  assert.equal(hasCompletedPhase([...responses, row("p1", "q3", "A")], "p1", questions), true);
+  assert.equal(hasCompletedPhase(responses, "p2", questions), false);
+  assert.equal(hasCompletedPhase(responses, "p1", [], "initial"), false);
 });
