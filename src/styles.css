@@ -5,3 +5,25 @@
 
 .invite-panel{display:grid;grid-template-columns:1fr auto;align-items:center;gap:24px}.invite-copy h2{font:600 21px 'Space Grotesk';margin:10px 0 7px}.invite-copy p{max-width:480px;min-height:0;margin:0 0 16px}.invite-note{display:block;margin-top:12px;color:#7f8a9e;font-size:10px}.qr-frame{background:#fff;border-radius:16px;padding:12px;display:grid;place-items:center}.qr-frame svg{display:block;max-width:100%;height:auto}
 @media(max-width:650px){.invite-panel{grid-template-columns:1fr}.qr-frame{justify-self:center}.invite-copy{text-align:center}.invite-copy .eyebrow{justify-content:center}.invite-copy p{margin-left:auto;margin-right:auto}}
+
+.connections-panel{margin-top:13px;background:#0d1320;border:1px solid #273044;border-radius:14px;padding:18px}
+.connections-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:15px;margin-bottom:15px}
+.connections-heading h3{font:600 17px 'Space Grotesk';margin:7px 0}
+.connections-heading p{font-size:12px!important;min-height:0;margin:0;max-width:560px}
+.connection-count{white-space:nowrap;border:1px solid #39335e;background:#272343;color:#c9c4ff;border-radius:30px;padding:7px 10px;font-size:10px}
+.connection-list{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.connection-card{background:#121a29;border:1px solid #2b3448;border-radius:12px;padding:14px}
+.connection-topline{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.connection-people{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:11px;color:#e5e8f2;font-weight:600}
+.connection-link{color:#a49bff}
+.connection-topline strong{font:600 22px 'Space Grotesk';color:#b9b0ff}
+.connection-meter{height:6px;background:#293044;border-radius:20px;overflow:hidden;margin:10px 0 7px}
+.connection-meter span{display:block;height:100%;background:linear-gradient(90deg,#766df0,#58d6a2);border-radius:20px}
+.connection-subtitle{font-size:10px;color:#8994a8}
+.shared-answers{display:grid;gap:7px;margin-top:12px}
+.shared-answers div{display:grid;gap:3px;border-top:1px solid #293044;padding-top:7px}
+.shared-answers span{font-size:10px;line-height:1.45;color:#9aa5b8}
+.shared-answers b{font-size:11px;color:#d8d3ff}
+.connection-footnote{font-size:10px!important;min-height:0;margin:13px 0 0!important;color:#778398!important}
+.connection-empty{margin:0!important}
+@media(max-width:650px){.connection-list{grid-template-columns:1fr}.connections-heading{flex-direction:column}}
