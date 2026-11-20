@@ -57,3 +57,8 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+
+/* Clear participant privacy and reflection-round guidance. */
+.privacy-note,.round-status-note{font-size:11px;line-height:1.6;color:#aab4c6;background:#0d1320;border:1px solid #273044;border-radius:10px;padding:11px 13px;margin:12px 0 16px}
+.round-status-note{margin:12px 0 0;max-width:620px}
